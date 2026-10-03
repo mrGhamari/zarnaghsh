@@ -29,7 +29,7 @@ npm run build      # خروجی استاتیک در out/
 
 ## انتشار روی GitHub Pages
 
-1. در مخزن: **Settings → Pages → Build and deployment → Source: GitHub Actions**
-2. هر push روی `main` سایت را می‌سازد و منتشر می‌کند.
-3. (اختیاری) دامنه‌ی اختصاصی مثل `zarnaghsh.ir` را در همان صفحه وارد کنید؛ base path خودکار تنظیم می‌شود.
-4. (اختیاری) کد تأیید Google Search Console را در **Settings → Secrets and variables → Actions → Variables** با نام `GOOGLE_SITE_VERIFICATION` بگذارید.
+1. در مخزن: **Settings → Pages → Build and deployment → Source: Deploy from a branch** و شاخه‌ی **gh-pages** با پوشه‌ی **/ (root)**
+2. هر push روی `main` سایت را می‌سازد و خروجی را روی شاخه‌ی `gh-pages` منتشر می‌کند (`.github/workflows/deploy.yml`).
+3. (اختیاری) دامنه‌ی اختصاصی: در **Settings → Secrets and variables → Actions → Variables** متغیر `CUSTOM_DOMAIN` (مثلاً `zarnaghsh.ir`) را بسازید و همان دامنه را در Settings → Pages وارد کنید.
+4. (اختیاری) کد تأیید Google Search Console را در همان بخش Variables با نام `GOOGLE_SITE_VERIFICATION` بگذارید.

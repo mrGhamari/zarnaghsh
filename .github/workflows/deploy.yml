@@ -1,22 +1,26 @@
 name: Deploy to GitHub Pages
 
+# Builds the static export and publishes it to the gh-pages branch.
+# Settings → Pages → Source: "Deploy from a branch" → gh-pages / (root).
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    env:
+      # Set the CUSTOM_DOMAIN repository variable (e.g. zarnaghsh.ir) once a domain is connected.
+      CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,32 +29,39 @@ jobs:
           node-version: 22
           cache: npm
 
-      - id: pages
-        uses: actions/configure-pages@v5
-
       - run: npm ci
 
       - run: npm run typecheck
+
+      - name: Resolve base path and site URL
+        run: |
+          if [ -n "$CUSTOM_DOMAIN" ]; then
+            echo "NEXT_PUBLIC_BASE_PATH=" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SITE_URL=https://$CUSTOM_DOMAIN" >> "$GITHUB_ENV"
+          else
+            repo="${GITHUB_REPOSITORY#*/}"
+            owner="${GITHUB_REPOSITORY_OWNER,,}"
+            echo "NEXT_PUBLIC_BASE_PATH=/$repo" >> "$GITHUB_ENV"
+            echo "NEXT_PUBLIC_SITE_URL=https://$owner.github.io/$repo" >> "$GITHUB_ENV"
+          fi
 
       - name: Build static site
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
-          # "/zarnaghsh" on <user>.github.io, empty when a custom domain is set.
-          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-          NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.base_url }}
           NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
+      - name: Add CNAME for custom domain
+        if: env.CUSTOM_DOMAIN != ''
+        run: echo "$CUSTOM_DOMAIN" > out/CNAME
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to gh-pages
+        run: |
+          cd out
+          touch .nojekyll
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Deploy ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
